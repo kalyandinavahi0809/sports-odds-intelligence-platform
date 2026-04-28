@@ -1,0 +1,38 @@
+name: Process Odds Data
+
+on:
+  workflow_run:
+    workflows: ["Ingest Odds Data"]
+    types: [completed]
+  workflow_dispatch:
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        run: |
+          pip install -r requirements.txt
+
+      - name: Normalize data
+        run: |
+          python -m src.transform.normalize
+
+      - name: Run analytics
+        run: |
+          python -m src.analytics.arbitrage
+          python -m src.analytics.plus_ev
+
+      - name: Commit processed data
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add data/processed/ data/analytics/
+          git diff --cached --quiet || (git commit -m "Process odds snapshot $(date -u +%Y%m%d_%H%M%S)" && git push)
