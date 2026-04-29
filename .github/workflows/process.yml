@@ -6,6 +6,9 @@ on:
     types: [completed]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   process:
     runs-on: ubuntu-latest
@@ -19,16 +22,16 @@ jobs:
 
       - name: Install deps
         run: |
-          pip install -r requirements.txt
+          pip3 install -r requirements.txt
 
       - name: Normalize data
         run: |
-          python -m src.transform.normalize
+          python3 -m src.transform.normalize
 
       - name: Run analytics
         run: |
-          python -m src.analytics.arbitrage
-          python -m src.analytics.plus_ev
+          python3 -m src.analytics.arbitrage
+          python3 -m src.analytics.plus_ev
 
       - name: Commit processed data
         run: |
