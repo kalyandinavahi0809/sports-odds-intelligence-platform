@@ -247,6 +247,67 @@ else:
             width="stretch",
         )
 
+# ── Section D: Analytics Visualizations ───────────────────
+
+st.header("📈 Analytics Visualizations")
+
+CHARTS_DIR = _project_root / "charts"
+
+viz_tabs = st.tabs(["Coverage & Markets", "Vig Analysis", "Odds Value", "Sharp vs Rec"])
+
+with viz_tabs[0]:
+    col1, col2 = st.columns(2)
+    with col1:
+        img = CHARTS_DIR / "01_bookmaker_coverage.png"
+        if img.exists():
+            st.image(str(img), caption="Bookmaker Coverage: Events vs Odds Lines")
+        else:
+            st.info("Chart not found. Run analytics generation.")
+    with col2:
+        img = CHARTS_DIR / "02_market_distribution.png"
+        if img.exists():
+            st.image(str(img), caption="Market Distribution: Odds Lines by Type")
+        else:
+            st.info("Chart not found.")
+
+with viz_tabs[1]:
+    img = CHARTS_DIR / "03_vig_by_bookmaker.png"
+    if img.exists():
+        st.image(str(img), caption="Market Efficiency: Average Vig by Bookmaker (Latest Snapshot)")
+        st.markdown("""
+        **Interpretation:** Lower vig = sharper bookmaker. 
+        `lowvig` (3.5%) and `betonlineag` (4.3%) are most efficient.
+        `betrivers` (5.6%) carries the highest margin.
+        """)
+    else:
+        st.info("Chart not found.")
+
+with viz_tabs[2]:
+    col1, col2 = st.columns(2)
+    with col1:
+        img = CHARTS_DIR / "04_best_h2h_odds.png"
+        if img.exists():
+            st.image(str(img), caption="Best H2H Odds per Outcome")
+        else:
+            st.info("Chart not found.")
+    with col2:
+        img = CHARTS_DIR / "06_spreads_depth.png"
+        if img.exists():
+            st.image(str(img), caption="Spreads Market Depth")
+        else:
+            st.info("Chart not found.")
+
+with viz_tabs[3]:
+    img = CHARTS_DIR / "05_sharp_vs_rec.png"
+    if img.exists():
+        st.image(str(img), caption="Sharp vs Recreational Bookmaker: H2H Odds % Difference")
+        st.markdown("""
+        **Interpretation:** Positive bars = recreational books offer worse odds.
+        Bigger bars = bigger edge for sharp bettors shopping lines.
+        """)
+    else:
+        st.info("Chart not found.")
+
 # ── Footer ──────────────────────────────────────────────────
 
 st.divider()
