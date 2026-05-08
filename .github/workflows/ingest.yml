@@ -33,5 +33,5 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add data/raw/
+          git add -f data/raw/
           git diff --cached --quiet || (git commit -m "Ingest odds snapshot $(date -u +%Y%m%d_%H%M%S)" && git push)
