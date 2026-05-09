@@ -12,11 +12,13 @@ normalize:
 analytics:
 	python3 -m src.analytics.arbitrage
 	python3 -m src.analytics.plus_ev
+	python3 -m src.analytics.line_movement
 
 process:
 	python3 -m src.transform.normalize
 	python3 -m src.analytics.arbitrage
 	python3 -m src.analytics.plus_ev
+	python3 -m src.analytics.line_movement
 
 dashboard:
 	PYTHONPATH=. python3 -m streamlit run src/dashboard/app.py

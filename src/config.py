@@ -20,6 +20,31 @@ ODDS_API_BASE = "https://api.the-odds-api.com/v4"
 # Sports (extensible)
 SPORTS = [s.strip() for s in os.getenv("SPORTS", "basketball_nba").split(",") if s.strip()]
 
+# Sport display labels
+SPORT_LABELS = {
+    "basketball_nba": "NBA",
+    "americanfootball_nfl": "NFL",
+    "baseball_mlb": "MLB",
+    "icehockey_nhl": "NHL",
+    "soccer_epl": "EPL",
+    "soccer_uefa_champs_league": "Champions League",
+    "tennis_atp": "ATP Tennis",
+    "mma_mixed_martial_arts": "MMA",
+}
+
+# Markets per sport (some don't support all types)
+SPORT_MARKETS = {
+    "basketball_nba": "h2h,spreads,totals",
+    "americanfootball_nfl": "h2h,spreads,totals",
+    "baseball_mlb": "h2h,spreads,totals",
+    "icehockey_nhl": "h2h,spreads,totals",
+    "soccer_epl": "h2h,totals",
+    "soccer_uefa_champs_league": "h2h,totals",
+    "tennis_atp": "h2h",
+    "mma_mixed_martial_arts": "h2h",
+}
+DEFAULT_MARKETS = "h2h,spreads,totals"
+
 # Bookmakers
 BOOKMAKERS = [b.strip() for b in os.getenv("BOOKMAKERS", "").split(",") if b.strip()]
 
@@ -27,3 +52,13 @@ BOOKMAKERS = [b.strip() for b in os.getenv("BOOKMAKERS", "").split(",") if b.str
 EV_THRESHOLD = float(os.getenv("EV_THRESHOLD", "0.02"))
 FRESHNESS_MINUTES = int(os.getenv("FRESHNESS_MINUTES", "5"))
 STRICT_FRESHNESS = os.getenv("STRICT_FRESHNESS", "true").lower() == "true"
+
+
+def get_sport_markets(sport: str) -> str:
+    """Return markets string for a given sport."""
+    return SPORT_MARKETS.get(sport, DEFAULT_MARKETS)
+
+
+def get_sport_label(sport: str) -> str:
+    """Return human-readable label for a sport."""
+    return SPORT_LABELS.get(sport, sport.replace("_", " ").title())

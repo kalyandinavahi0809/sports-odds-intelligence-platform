@@ -1,44 +1,49 @@
-"""Arbitrage opportunity detection using DuckDB."""
+"""Arbitrage opportunity detection using DuckDB — multi-sport support."""
 
 from datetime import datetime, timezone
 from pathlib import Path
 
 import duckdb
+import polars as pl
 
 from src.config import ANALYTICS_DIR, FRESHNESS_MINUTES, STRICT_FRESHNESS
 
 
-def write_partitioned(df, base_dir: Path, filename: str) -> list[Path]:
-    """Write DataFrame as Hive-partitioned Parquet.
+def write_partitioned(df: pl.DataFrame, base_dir: Path, filename: str) -> list[Path]:
+    """Write DataFrame as Hive-partitioned Parquet by sport.
     Removes old file before writing to ensure clean overwrite.
     """
     if df.is_empty():
         return []
+
     written: list[Path] = []
     date_val = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    sport_val = "basketball_nba"
-    partition_dir = base_dir / f"date={date_val}" / f"sport={sport_val}"
-    partition_dir.mkdir(parents=True, exist_ok=True)
-    out_path = partition_dir / filename
 
-    # Remove old file to ensure clean overwrite
-    if out_path.exists():
-        out_path.unlink()
+    # Group by sport column if present
+    if "sport" in df.columns:
+        groups = df.group_by("sport")
+    else:
+        # Fallback: single group
+        groups = [("unknown", df)]
 
-    df.write_parquet(out_path)
-    written.append(out_path)
+    for keys, group in groups:
+        sport_val = keys[0] if isinstance(keys, tuple) else keys
+        partition_dir = base_dir / f"date={date_val}" / f"sport={sport_val}"
+        partition_dir.mkdir(parents=True, exist_ok=True)
+        out_path = partition_dir / filename
+
+        # Remove old file to ensure clean overwrite
+        if out_path.exists():
+            out_path.unlink()
+
+        group.write_parquet(out_path)
+        written.append(out_path)
+
     return written
 
 
 def detect_arbitrage():
-    """Scan processed odds for arbitrage opportunities.
-
-    Production-grade filters:
-    - Freshness: bookmaker_last_update within configured minutes
-    - Valid outcome pairing (h2h: 2 teams; totals: Over/Under)
-    - Skip incomplete markets (exactly 2 outcomes required)
-    - Latest snapshot per bookmaker (ROW_NUMBER by last_update)
-    """
+    """Scan processed odds for arbitrage opportunities across all sports."""
     freshness_clause = (
         f"AND date_diff('minute', bookmaker_last_update, CURRENT_TIMESTAMP) < {FRESHNESS_MINUTES}"
         if STRICT_FRESHNESS
@@ -85,15 +90,12 @@ def detect_arbitrage():
         AND COUNT(DISTINCT best_bookmaker) >= 2
         AND COUNT(*) = 2
     ),
-    -- Validate outcome pairing
     valid_arbs AS (
       SELECT m.*
       FROM margins m
       WHERE
-        -- h2h: two different team names (not same team twice)
         (m.market = 'h2h' AND m.outcomes[1] != m.outcomes[2])
         OR
-        -- totals: must be Over and Under
         (m.market = 'totals'
          AND 'Over' IN m.outcomes
          AND 'Under' IN m.outcomes)
@@ -130,14 +132,15 @@ def detect_arbitrage():
 
     df = duckdb.sql(query).pl()
 
-    # Clean up old file if result is empty
+    # Clean up stale files per sport
     date_val = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    sport_val = "basketball_nba"
-    partition_dir = ANALYTICS_DIR / f"date={date_val}" / f"sport={sport_val}"
-    old_path = partition_dir / "arbitrage.parquet"
-    if df.is_empty() and old_path.exists():
-        old_path.unlink()
-        print(f"  Removed stale: {old_path}")
+    for sport_dir in (ANALYTICS_DIR / f"date={date_val}").glob("sport=*"):
+        old_path = sport_dir / "arbitrage.parquet"
+        if old_path.exists():
+            sport_key = sport_dir.name.replace("sport=", "")
+            if "sport" not in df.columns or sport_key not in df["sport"].unique().to_list():
+                old_path.unlink()
+                print(f"  Removed stale: {old_path}")
 
     written = write_partitioned(df, ANALYTICS_DIR, "arbitrage.parquet")
     for p in written:

@@ -21,7 +21,9 @@ DEDUP_KEY = [
     "odds_decimal",
 ]
 
-VALID_MARKETS = {"h2h", "spreads", "totals"}
+# Market types vary by sport (e.g., tennis only has h2h, soccer has h2h+totals)
+# Accept any market type the API returns — no hardcoded filter.
+VALID_MARKETS = None  # disabled: accept all
 
 
 # ── Odds Conversion ────────────────────────────────────────
@@ -77,7 +79,11 @@ def flatten_raw_record(record: dict) -> list[dict]:
 
         for market in bookmaker.get("markets", []):
             market_key = market.get("key", "")
-            if market_key not in VALID_MARKETS:
+            if not market_key:
+                continue
+
+            # Skip unsupported markets silently (API may return markets not requested)
+            if VALID_MARKETS is not None and market_key not in VALID_MARKETS:
                 continue
 
             # Market timestamp: prefer bookmaker's market update, fallback

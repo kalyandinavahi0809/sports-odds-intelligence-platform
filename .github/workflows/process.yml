@@ -12,6 +12,9 @@ permissions:
 jobs:
   process:
     runs-on: ubuntu-latest
+    env:
+      SPORTS: ${{ secrets.ODDS_SPORTS || 'upcoming' }}
+      STRICT_FRESHNESS: ${{ secrets.STRICT_FRESHNESS || 'false' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -32,6 +35,7 @@ jobs:
         run: |
           python3 -m src.analytics.arbitrage
           python3 -m src.analytics.plus_ev
+          python3 -m src.analytics.line_movement
 
       - name: Commit processed data
         run: |

@@ -134,14 +134,15 @@ def detect_plus_ev():
 
     df = duckdb.sql(query).pl()
 
-    # Clean up old file if result is empty
+    # Clean up stale files per sport
     date_val = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    sport_val = "basketball_nba"
-    partition_dir = ANALYTICS_DIR / f"date={date_val}" / f"sport={sport_val}"
-    old_path = partition_dir / "plus_ev.parquet"
-    if df.is_empty() and old_path.exists():
-        old_path.unlink()
-        print(f"  Removed stale: {old_path}")
+    for sport_dir in (ANALYTICS_DIR / f"date={date_val}").glob("sport=*"):
+        old_path = sport_dir / "plus_ev.parquet"
+        if old_path.exists():
+            sport_key = sport_dir.name.replace("sport=", "")
+            if "sport" not in df.columns or sport_key not in df["sport"].unique().to_list():
+                old_path.unlink()
+                print(f"  Removed stale: {old_path}")
 
     written = write_partitioned(df, ANALYTICS_DIR, "plus_ev.parquet")
     for p in written:

@@ -1,4 +1,4 @@
-"""Odds data ingestion from The Odds API."""
+"""Odds data ingestion from The Odds API — multi-sport support."""
 
 import asyncio
 from datetime import datetime, timezone
@@ -6,35 +6,34 @@ from pathlib import Path
 
 import httpx
 
-from src.config import ODDS_API_KEY, ODDS_API_BASE, SPORTS
+from src.config import ODDS_API_KEY, ODDS_API_BASE, SPORTS, get_sport_markets
 from src.ingest.storage import write_raw_snapshot
 
 
-DEFAULT_MARKETS = "h2h,spreads,totals"
 DEFAULT_REGIONS = "us"
 DEFAULT_ODDS_FORMAT = "decimal"
 REQUEST_TIMEOUT = 30.0
 MAX_RETRIES = 3
 
 
-def build_request_url(sport_key: str, api_key: str) -> str:
+def build_request_url(sport_key: str, api_key: str, markets: str) -> str:
     """Build the full request URL for a sport."""
     return (
         f"{ODDS_API_BASE}/sports/{sport_key}/odds"
         f"?apiKey={api_key}"
         f"&regions={DEFAULT_REGIONS}"
-        f"&markets={DEFAULT_MARKETS}"
+        f"&markets={markets}"
         f"&oddsFormat={DEFAULT_ODDS_FORMAT}"
     )
 
 
-def build_safe_request_url(sport_key: str) -> str:
+def build_safe_request_url(sport_key: str, markets: str) -> str:
     """Build the request URL with the API key redacted (for logging/storage)."""
     return (
         f"{ODDS_API_BASE}/sports/{sport_key}/odds"
         f"?apiKey=REDACTED"
         f"&regions={DEFAULT_REGIONS}"
-        f"&markets={DEFAULT_MARKETS}"
+        f"&markets={markets}"
         f"&oddsFormat={DEFAULT_ODDS_FORMAT}"
     )
 
@@ -43,6 +42,7 @@ async def fetch_sport(
     client: httpx.AsyncClient,
     sport_key: str,
     api_key: str,
+    markets: str,
 ) -> tuple[list[dict], str]:
     """Fetch odds for a single sport with retries.
 
@@ -55,8 +55,8 @@ async def fetch_sport(
             "Copy .env.example to .env and add your key."
         )
 
-    url = build_request_url(sport_key, api_key)
-    safe_url = build_safe_request_url(sport_key)
+    url = build_request_url(sport_key, api_key, markets)
+    safe_url = build_safe_request_url(sport_key, markets)
     fetched_at = datetime.now(timezone.utc)
 
     last_error: Exception | None = None
@@ -107,35 +107,47 @@ async def fetch_sport(
     ) from last_error
 
 
-async def fetch_all() -> list[Path]:
+async def fetch_all() -> dict:
     """Fetch odds for all configured sports and write raw JSONL snapshots.
 
     Returns:
-        List of written snapshot file paths.
+        Dict with keys: success (list), failed (list), paths (list of Path)
     """
     api_key = ODDS_API_KEY
     if not api_key:
         raise ValueError("ODDS_API_KEY not found in environment.")
 
-    written_paths: list[Path] = []
+    results = {"success": [], "failed": [], "paths": []}
     async with httpx.AsyncClient(http2=True) as client:
         for sport_key in SPORTS:
+            markets = get_sport_markets(sport_key)
             try:
-                events, safe_url = await fetch_sport(client, sport_key, api_key)
+                events, safe_url = await fetch_sport(client, sport_key, api_key, markets)
                 snapshot_path = write_raw_snapshot(
                     sport=sport_key,
                     events=events,
                     request_url_without_key=safe_url,
                 )
-                written_paths.append(snapshot_path)
+                results["success"].append(sport_key)
+                results["paths"].append(snapshot_path)
+                print(f"✅ {sport_key}: {len(events)} events, saved to {snapshot_path}")
             except Exception as exc:
-                print(f"ERROR: Ingestion failed for {sport_key}: {exc}")
-                raise
+                print(f"❌ {sport_key}: FAILED — {exc}")
+                results["failed"].append({"sport": sport_key, "error": str(exc)})
+                # Do NOT raise — continue with other sports
 
-    return written_paths
+    # Summary
+    print(f"\n=== INGESTION SUMMARY ===")
+    print(f"Sports configured: {len(SPORTS)}")
+    print(f"Success: {len(results['success'])} — {results['success']}")
+    print(f"Failed: {len(results['failed'])}")
+    for f in results["failed"]:
+        print(f"  ❌ {f['sport']}: {f['error']}")
+
+    return results
 
 
 if __name__ == "__main__":
-    paths = asyncio.run(fetch_all())
-    for p in paths:
+    results = asyncio.run(fetch_all())
+    for p in results["paths"]:
         print(f"Snapshot saved: {p}")

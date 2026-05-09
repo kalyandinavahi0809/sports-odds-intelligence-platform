@@ -11,6 +11,9 @@ permissions:
 jobs:
   ingest:
     runs-on: ubuntu-latest
+    env:
+      SPORTS: ${{ secrets.ODDS_SPORTS || 'upcoming' }}
+      STRICT_FRESHNESS: ${{ secrets.STRICT_FRESHNESS || 'false' }}
     steps:
       - uses: actions/checkout@v4
 
