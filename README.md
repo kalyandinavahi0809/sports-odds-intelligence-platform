@@ -1,4 +1,4 @@
-# 🏀 Sports Odds Intelligence Platform
+# 🏆 Real-Time Multi-Sport Odds Market Intelligence Platform
 
 <p align="center">
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.11+-blue.svg?style=flat-square&logo=python&logoColor=white" alt="Python"></a>
@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <b>Real-time sports odds intelligence for arbitrage & +EV betting</b>
+  <b>Multi-sport odds intelligence for arbitrage, +EV betting, and line movement analytics</b>
 </p>
 
 <p align="center">
@@ -48,6 +48,12 @@ make ingest && make normalize && make analytics && make dashboard
 
 ## 📸 Dashboard Preview
 
+### Live Snapshot Banner
+Real-time freshness indicator with color-coded status:
+- 🟢 Green (< 5 min): Live data
+- 🟡 Yellow (5–15 min): Slightly stale
+- 🔴 Red (> 15 min): Stale — refresh needed
+
 ### +EV Bets (Positive Expected Value)
 Identifies bets where the market price exceeds fair probability:
 
@@ -60,6 +66,13 @@ True Probability: 16.84%
 EV: +2.70%
 Confidence: 8 bookmakers
 ```
+
+### Line Movement Intelligence
+Track odds changes across snapshots:
+- Odds movement line charts by bookmaker
+- Biggest positive/negative movers
+- Implied probability shifts
+- Market volatility heatmap
 
 ### Arbitrage Scanner
 Detects risk-free opportunities across bookmakers:
@@ -90,6 +103,23 @@ Profit: (1/margin - 1) × 100%
 | **Streamlit Dashboard** | Filters, charts, dark mode support |
 | **GitHub Actions** | Scheduled ingestion every 6 hours |
 | **100% Free** | No paid cloud, no database, no infrastructure |
+
+### Supported Sports
+
+Configure via `SPORTS` env variable (comma-separated):
+
+| Sport | Key | Markets | Status |
+|-------|-----|---------|--------|
+| NBA | `basketball_nba` | h2h, spreads, totals | ✅ Active |
+| NFL | `americanfootball_nfl` | h2h, spreads, totals | ✅ Ready |
+| MLB | `baseball_mlb` | h2h, spreads, totals | ✅ Ready |
+| NHL | `icehockey_nhl` | h2h, spreads, totals | ✅ Ready |
+| EPL | `soccer_epl` | h2h, totals | ✅ Ready |
+| Champions League | `soccer_uefa_champs_league` | h2h, totals | ✅ Ready |
+| ATP Tennis | `tennis_atp` | h2h | ✅ Ready |
+| MMA | `mma_mixed_martial_arts` | h2h | ✅ Ready |
+
+**Free tier recommendation:** Start with 3 sports to stay within API quota.
 
 ---
 
